@@ -1,0 +1,238 @@
+<!doctype html>  
+<html lang="en">
+	
+	<head>
+		<meta charset="utf-8">
+		
+		<title>Node Fibers</title>
+
+		<meta name="description" content="Non-concurrent thread-like constructs for Node"/>
+		<meta name="author" content="Simon Sturmer"/>
+
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+		
+		<link rel="stylesheet" href="css/reset.css"/>
+		<link rel="stylesheet" href="css/main.css"/>
+		<link rel="stylesheet" href="css/print.css" type="text/css" media="print"/>
+
+		<link rel="stylesheet" href="lib/zenburn.css"/>
+	</head>
+	
+	<body>
+		
+		<div class="reveal">
+
+			<!-- Used to fade in a background when a specific slide state is reached -->
+			<div class="state-background"></div>
+			
+			<!-- Any section element inside of this container is displayed as a slide -->
+			<div class="slides">
+				<section>
+					<h1>Node Fibers</h1>
+					<h3 class="inverted">Non-concurrent thread-like constructs for Node</h3>
+          <p>Simon Sturmer (4 June 2012)</p>
+          <p>github.com/sstur || sstur@me.com</p>
+				</section>
+				
+				<section>
+					<h3>Fibers are similar to</h3>
+					<ul style="width:500px">
+            <li>Coroutines</li>
+            <li>Generators</li>
+            <li>Continuations/Comprehensions</li>
+          </ul>
+          <p>&nbsp;</p>
+					<h3>Fibers are not</h3>
+					<ul style="width:500px">
+            <li>Threads</li>
+            <li>Green Threads</li>
+            <li>Isolates</li>
+          </ul>
+				</section>
+
+				<section>
+					<h3>Definition</h3>
+          <p>A fiber is a particularly lightweight thread of execution, using co-operative multitasking.</p>
+          <p><i><small>- <a href="http://en.wikipedia.org/wiki/Fiber_(computer_science)" class="roll"><span data-title="Wikipedia">Wikipedia</span></a></small></i></p>
+          <p>Fibers do not execute concurrently which drastically simplifies things with regards to locking and race conditions<sup>*</sup>.</p>
+        </section>
+
+        <section>
+					<h3>Example</h3>
+					<pre><code contenteditable style="font-size: 20px; margin-top: 20px;">var Fiber = require('fibers');
+
+function sleep(ms) {
+  var fiber = Fiber.current;
+  setTimeout(function() {
+    fiber.run();
+  }, ms);
+  Fiber.yield();
+}
+
+Fiber(function() {
+  console.log('wait... ' + new Date);
+  sleep(1000);
+  console.log('ok... ' + new Date);
+}).run();
+
+console.log('back in main');
+          </code></pre>
+        </section>
+
+        <section>
+					<h3>Output</h3>
+					<pre style="font-size: 20px">wait... Mon Jun 04 2012 16:37:24 GMT+1000
+back in main
+ok... Mon Jun 04 2012 16:37:25 GMT+1000</pre>
+        </section>
+
+        <section>
+          <h3>Note</h3>
+          <ul>
+            <li>Event Loop is never blocked</li>
+            <li>The function <code>sleep</code> cannot be used outside of a Fiber.</li>
+            <li>Fibers are not free, but they are orders of magnitude cheaper than processes or threads</li>
+            <li>Running and yielding is not free, as it incurs a context switch (load/save call stack) but far less frequently than a thread</li>
+            <li>Can allow you to program in a style similar to sync programming, but offers more advantages like shared globals.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>How it works</h3>
+          <ul>
+            <li>Yielding execution will resume back in the fiber right where you left off. You can also pass values back and forth through yield() and run()</li>
+            <li>Again, the node event loop is never blocked while this script is running.</li>
+            <li>V8 is still single-threaded, so no two lines are ever being executed concurrently</li>
+            <li>Basically allows routines to be paused/resumed</li>
+            <li>Every time a fiber is paused, Node unloads the call stack and carries on with the Event Loop</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3>Use Cases</h3>
+          <p>Fibers can be used to run programs written for Sync environments in Node, but this is just one use case.</p>
+          <blockquote>http://github.com/olegp/common-node</blockquote>
+          <p>Most of what can be done with ES Harmony Generators can be done with Fibers</p>
+        </section>
+
+        <section>
+          <h3>Fibonacci Generator</h3>
+					<pre><code contenteditable style="font-size: 18px; margin-top: 20px;">var Fiber = require('fibers');
+
+// Generator function. Returns a function which returns incrementing
+// Fibonacci numbers with each call.
+function Fibonacci() {
+  // Create a new fiber which yields sequential Fibonacci numbers
+  var fiber = Fiber(function() {
+  Fiber.yield(0); // F(0) -> 0
+  var prev = 0, curr = 1;
+  while (true) {
+    Fiber.yield(curr);
+    var tmp = prev + curr;
+    prev = curr;
+    curr = tmp;
+  }
+  });
+  // Return a bound handle to `run` on this fiber
+  return fiber.run.bind(fiber);
+}
+
+// Initialize a new Fibonacci sequence and iterate up to 1597
+var seq = Fibonacci();
+for (var ii = seq(); ii <= 1597; ii = seq()) {
+  console.log(ii);
+}
+          </code></pre>
+        </section>
+
+        <section>
+          <h3>Installing</h3>
+          <blockquote>npm install fibers</blockquote>
+          <p>&nbsp;</p>
+          <p>Just got native Windows support last month (Mac and linux were supported from the start)</p>
+        </section>
+
+        <section>
+          <h3>ECMAscript Harmony</h3>
+          <p>ES will get Generators which use a different syntax, but can accomplish the same things</p>
+          <p>&nbsp;</p>
+          <p>Hasn't landed in V8 yet, but when it does, Node will get as well</p>
+        </section>
+
+        <section>
+          <h3>That's It</h3>
+          <p>Easy enough to </p>
+          <p>&nbsp;</p>
+          <p>Hasn't landed in V8 yet, but when it does, Node will get as well</p>
+        </section>
+
+      </div>
+
+			<!-- The navigational controls UI -->
+			<aside class="controls">
+				<a class="left" href="#">&#x25C4;</a>
+				<a class="right" href="#">&#x25BA;</a>
+				<a class="up" href="#">&#x25B2;</a>
+				<a class="down" href="#">&#x25BC;</a>
+			</aside>
+
+			<!-- Displays presentation progress, max value changes via JS to reflect # of slides -->
+			<div class="progress"><span></span></div>
+			
+		</div>
+
+		<!-- Optional libraries for code syntax highlighting and classList support in IE9 -->
+		<script src="lib/highlight.js"></script>
+		<script src="lib/classList.js"></script>
+		
+		<script src="js/reveal.js"></script>
+		
+		<script>
+			// Parse the query string into a key/value object
+			var query = {};
+			location.search.replace( /[A-Z0-9]+?=(\w*)/gi, function(a) {
+				query[ a.split( '=' ).shift() ] = a.split( '=' ).pop();
+			} );
+
+			// Fires when a slide with data-state=customevent is activated
+			Reveal.addEventListener( 'customevent', function() {
+				alert( '"customevent" has fired' );
+			} );
+
+			// Fires each time a new slide is activated
+			Reveal.addEventListener( 'slidechanged', function( event ) {
+				// event.indexh & event.indexv
+			} );
+
+			Reveal.initialize({
+				// Display controls in the bottom right corner
+				controls: true,
+
+				// Display a presentation progress bar
+				progress: true,
+
+				// If true; each slide will be pushed to the browser history
+				history: true,
+
+				// Loops the presentation, defaults to false
+				loop: false,
+
+				// Flags if mouse wheel navigation should be enabled
+				mouseWheel: true,
+
+				// Apply a 3D roll to links on hover
+				rollingLinks: true,
+
+				// UI style
+				theme: query.theme || 'default', // default/neon
+
+				// Transition style
+				transition: query.transition || 'default' // default/cube/page/concave/linear(2d)
+			});
+
+			hljs.initHighlightingOnLoad();
+		</script>
+
+	</body>
+</html>
